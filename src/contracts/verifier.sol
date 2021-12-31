@@ -3,20 +3,37 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 interface IERC20Token {
-  function transfer(address, uint256) external returns (bool);
-  function approve(address, uint256) external returns (bool);
-  function transferFrom(address, address, uint256) external returns (bool);
-  function totalSupply() external view returns (uint256);
-  function balanceOf(address) external view returns (uint256);
-  function allowance(address, address) external view returns (uint256);
+    function transfer(address, uint256) external returns (bool);
+    function approve(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address) external view returns (uint256);
+    function allowance(address, address) external view returns (uint256);
 
-  event Transfer(address indexed from, address indexed to, uint256 value);
-  event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
 contract Verifier{
     address internal cUsdTokenAddress = 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1;
-    address internal projectOwnerAddress = 0xb7BF999D966F287Cd6A1541045999aD5f538D3c6;
+    address internal projectOwnerAddress;
+    //    fee users pay to add product
+    uint public createFee;
+
+    //    fee users pay to vote on a project
+    uint public voteFee;
+
+    //    modifiers
+    modifier onlyOwner(){
+        require(msg.sender == projectOwnerAddress, "Only callable by admin");
+        _;
+    }
+
+    constructor(){
+        projectOwnerAddress =  msg.sender;
+        setCreateFee(3000000000000000000);
+        setVoteFee(1000000000000000000);
+    }
 
     struct Product{
         address payable owner;
@@ -41,7 +58,7 @@ contract Verifier{
             IERC20Token(cUsdTokenAddress).transferFrom(
                 msg.sender,
                 projectOwnerAddress,
-                3000000000000000000
+                createFee
             ),
             "Transaction can not be performed"
         );
@@ -64,23 +81,27 @@ contract Verifier{
         uint,
         uint
     ){
+
         Product storage product  = products[_index];
+
+        require(product.owner != address(0), "Product does not exist");
         return (
-            product.owner,
-            product.productName,
-            product.summary,
-            product.productImage,
-            product.good,
-            product.bad
+        product.owner,
+        product.productName,
+        product.summary,
+        product.productImage,
+        product.good,
+        product.bad
         );
     }
 
     function upvoteProduct(uint index) public payable {
+        require( products[index].owner != address(0), "Product does not exist");
         require(
             IERC20Token(cUsdTokenAddress).transferFrom(
                 msg.sender,
                 projectOwnerAddress,
-                1000000000000000000
+                voteFee
             ),
             "Transaction can not be performed"
         );
@@ -88,11 +109,12 @@ contract Verifier{
     }
 
     function downvoteProduct(uint index) public payable {
+        require( products[index].owner != address(0), "Product does not exist");
         require(
             IERC20Token(cUsdTokenAddress).transferFrom(
                 msg.sender,
                 projectOwnerAddress,
-                1000000000000000000
+                voteFee
             ),
             "Transaction can not be performed"
         );
@@ -100,6 +122,16 @@ contract Verifier{
     }
     function getProductLength() public view returns (uint) {
         return (productLength);
+    }
+
+    //    admin functionalities
+
+    function setCreateFee(uint _fee) public onlyOwner  {
+        createFee = _fee;
+    }
+
+    function setVoteFee(uint _fee) public onlyOwner  {
+        voteFee = _fee;
     }
 
 
